@@ -264,11 +264,7 @@ Este projeto faz parte de um curso educacional. Sinta-se à vontade para:
 3. Melhorar a UI
 4. Adicionar funcionalidades
 
-## 📚 Documentação Adicional
 
-- Veja `docs/` para documentação detalhada
-- Consulte os notebooks `4_lab4.ipynb` e `5_lab5.ipynb` para contexto
-- Veja explicações em `/docs/mcp_lab5_explicacao.md`
 
 ## 📄 Licença
 
