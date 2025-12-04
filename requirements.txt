@@ -1,0 +1,22 @@
+# Core dependencies for Autonomous Traders
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+requests>=2.31.0
+
+# Data visualization
+pandas>=2.0.0
+plotly>=5.17.0
+
+# UI
+gradio>=4.0.0
+
+# MCP and Agents
+# Note: The 'agents' library and 'mcp' library should be installed
+# from the main project requirements.txt or pyproject.toml
+# These are typically installed via:
+# - pip install openai-agents
+# - pip install mcp
+
+# Optional: For market data
+# polygon-api-client>=1.13.0  # If using Polygon API directly
+
