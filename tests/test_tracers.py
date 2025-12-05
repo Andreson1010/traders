@@ -126,6 +126,9 @@ class TestLogTracer:
         span_data = MagicMock()
         span_data.type = "function"
         span_data.name = "buy_shares"
+        # Garante que server não existe ou é None
+        if hasattr(span_data, 'server'):
+            del span_data.server
         span.span_data = span_data
         
         tracer.on_span_start(span)
@@ -163,6 +166,9 @@ class TestLogTracer:
         span_data = MagicMock()
         span_data.type = "function"
         span_data.name = "buy_shares"
+        # Garante que server não existe ou é None
+        if hasattr(span_data, 'server'):
+            del span_data.server
         span.span_data = span_data
         
         tracer.on_span_start(span)
@@ -195,6 +201,9 @@ class TestLogTracer:
         span_data = MagicMock()
         span_data.type = "function"
         span_data.name = "sell_shares"
+        # Garante que server não existe ou é None
+        if hasattr(span_data, 'server'):
+            del span_data.server
         span.span_data = span_data
         
         tracer.on_span_end(span)

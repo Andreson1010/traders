@@ -14,15 +14,17 @@ from src.agents.traders import (
 class TestGetModel:
     """Testes para função get_model."""
     
-    @patch('src.agents.traders.openrouter_client')
-    def test_get_model_openrouter(self, mock_client):
+    def test_get_model_openrouter(self):
         """Testa seleção de modelo via OpenRouter."""
         from src.agents.traders import OpenAIChatCompletionsModel
         
-        result = get_model("gpt-4.1-mini")
+        # Modelos com "/" no nome devem usar OpenRouter
+        # Exemplo: "openai/gpt-4.1-mini" ou "anthropic/claude-3-opus"
+        result = get_model("openai/gpt-4.1-mini")
         
+        # Modelos com "/" devem retornar OpenAIChatCompletionsModel com openrouter_client
         assert isinstance(result, OpenAIChatCompletionsModel)
-        assert result.model == "gpt-4.1-mini"
+        assert result.model == "openai/gpt-4.1-mini"
     
     @patch('src.agents.traders.deepseek_client')
     def test_get_model_deepseek(self, mock_client):
@@ -207,7 +209,7 @@ class TestTrader:
     
     @pytest.mark.asyncio
     @patch('src.agents.traders.MCPServerStdio')
-    @patch('src.agents.traders.trader_mcp_server_params', [])
+    @patch('src.agents.traders.trader_mcp_server_params', [{"command": "test", "args": []}])
     @patch('src.agents.traders.researcher_mcp_server_params')
     @patch('src.agents.traders.read_strategy_resource')
     @patch('src.agents.traders.read_accounts_resource')
@@ -236,18 +238,18 @@ class TestTrader:
         mock_run = AsyncMock()
         mock_runner.run = mock_run
         
-        # Mock MCP servers
-        mock_server_context = AsyncMock()
-        mock_mcp_server.return_value.__aenter__ = AsyncMock(return_value=mock_server_context)
-        mock_mcp_server.return_value.__aexit__ = AsyncMock(return_value=None)
-        
         mock_researcher_params.return_value = []
+        
+        # Mock MCP servers como context manager assíncrono
+        mock_server_instance = AsyncMock()
+        mock_mcp_server.return_value.__aenter__ = AsyncMock(return_value=mock_server_instance)
+        mock_mcp_server.return_value.__aexit__ = AsyncMock(return_value=None)
         
         trader = Trader("Warren")
         
         await trader.run_with_mcp_servers()
         
-        # Verifica que servidores foram criados
+        # Verifica que servidores foram criados (MCPServerStdio foi chamado)
         assert mock_mcp_server.called
     
     @pytest.mark.asyncio

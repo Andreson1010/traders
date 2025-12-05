@@ -53,9 +53,9 @@ class TestTransaction:
 class TestAccount:
     """Testes para a classe Account."""
     
-    @patch('src.core.database.read_account')
-    @patch('src.core.database.write_account')
-    def test_account_get_new(self, mock_write, mock_read):
+    @patch('src.core.accounts.write_account')
+    @patch('src.core.accounts.read_account')
+    def test_account_get_new(self, mock_read, mock_write):
         """Testa criação de nova conta quando não existe."""
         mock_read.return_value = None
         
@@ -68,8 +68,8 @@ class TestAccount:
         assert account.transactions == []
         mock_write.assert_called_once()
     
-    @patch('src.core.database.read_account')
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.read_account')
+    @patch('src.core.accounts.write_account')
     def test_account_get_existing(self, mock_write, mock_read):
         """Testa carregamento de conta existente."""
         existing_data = {
@@ -90,7 +90,7 @@ class TestAccount:
         assert account.holdings == {"AAPL": 5}
         mock_write.assert_not_called()
     
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.write_account')
     def test_account_save(self, mock_write):
         """Testa salvamento de conta."""
         account = Account(
@@ -104,7 +104,7 @@ class TestAccount:
         account.save()
         mock_write.assert_called_once()
     
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.write_account')
     def test_account_reset(self, mock_write):
         """Testa reset de conta."""
         account = Account(
@@ -131,7 +131,7 @@ class TestAccount:
         assert account.portfolio_value_time_series == []
         mock_write.assert_called()
     
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.write_account')
     def test_account_deposit(self, mock_write):
         """Testa depósito de fundos."""
         account = Account(
@@ -148,7 +148,7 @@ class TestAccount:
         assert account.balance == 1500.0
         mock_write.assert_called()
     
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.write_account')
     def test_account_deposit_invalid(self, mock_write):
         """Testa depósito com valor inválido."""
         account = Account(
@@ -166,7 +166,7 @@ class TestAccount:
         with pytest.raises(ValueError, match="Deposit amount must be positive"):
             account.deposit(0.0)
     
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.write_account')
     def test_account_withdraw(self, mock_write):
         """Testa saque de fundos."""
         account = Account(
@@ -183,7 +183,7 @@ class TestAccount:
         assert account.balance == 700.0
         mock_write.assert_called()
     
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.write_account')
     def test_account_withdraw_insufficient_funds(self, mock_write):
         """Testa saque com fundos insuficientes."""
         account = Account(
@@ -198,11 +198,12 @@ class TestAccount:
         with pytest.raises(ValueError, match="Insufficient funds"):
             account.withdraw(200.0)
     
-    @patch('src.core.market.get_share_price')
-    @patch('src.core.database.write_account')
-    @patch('src.core.database.write_log')
+    @patch('src.core.accounts.get_share_price')
+    @patch('src.core.accounts.write_account')
+    @patch('src.core.accounts.write_log')
     def test_account_buy_shares(self, mock_log, mock_write, mock_price):
         """Testa compra de ações."""
+        # Mock deve retornar o mesmo valor sempre (incluindo quando report() chama calculate_portfolio_value)
         mock_price.return_value = 150.0
         
         account = Account(
@@ -220,7 +221,8 @@ class TestAccount:
         expected_price = 150.0 * (1 + SPREAD)
         expected_cost = expected_price * 10
         
-        assert account.balance == 10000.0 - expected_cost
+        # O saldo deve ser reduzido pelo custo da compra
+        assert abs(account.balance - (10000.0 - expected_cost)) < 0.01  # Tolerância para arredondamento
         assert account.holdings["AAPL"] == 10
         assert len(account.transactions) == 1
         assert account.transactions[0].symbol == "AAPL"
@@ -229,8 +231,8 @@ class TestAccount:
         mock_write.assert_called()
         mock_log.assert_called()
     
-    @patch('src.core.market.get_share_price')
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.get_share_price')
+    @patch('src.core.accounts.write_account')
     def test_account_buy_shares_insufficient_funds(self, mock_write, mock_price):
         """Testa compra com fundos insuficientes."""
         mock_price.return_value = 150.0
@@ -247,8 +249,8 @@ class TestAccount:
         with pytest.raises(ValueError, match="Insufficient funds"):
             account.buy_shares("AAPL", 10, "Test")
     
-    @patch('src.core.market.get_share_price')
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.get_share_price')
+    @patch('src.core.accounts.write_account')
     def test_account_buy_shares_invalid_symbol(self, mock_write, mock_price):
         """Testa compra com símbolo inválido."""
         mock_price.return_value = 0.0
@@ -265,11 +267,12 @@ class TestAccount:
         with pytest.raises(ValueError, match="Unrecognized symbol"):
             account.buy_shares("INVALID", 10, "Test")
     
-    @patch('src.core.market.get_share_price')
-    @patch('src.core.database.write_account')
-    @patch('src.core.database.write_log')
+    @patch('src.core.accounts.get_share_price')
+    @patch('src.core.accounts.write_account')
+    @patch('src.core.accounts.write_log')
     def test_account_sell_shares(self, mock_log, mock_write, mock_price):
         """Testa venda de ações."""
+        # Mock deve retornar o mesmo valor sempre (incluindo quando report() chama calculate_portfolio_value)
         mock_price.return_value = 150.0
         
         account = Account(
@@ -287,7 +290,8 @@ class TestAccount:
         expected_price = 150.0 * (1 - SPREAD)
         expected_proceeds = expected_price * 5
         
-        assert account.balance == 1000.0 + expected_proceeds
+        # O saldo deve ser aumentado pela receita da venda
+        assert abs(account.balance - (1000.0 + expected_proceeds)) < 0.01  # Tolerância para arredondamento
         assert account.holdings["AAPL"] == 5
         assert len(account.transactions) == 1
         assert account.transactions[0].quantity == -5  # Negativo para venda
@@ -295,8 +299,8 @@ class TestAccount:
         mock_write.assert_called()
         mock_log.assert_called()
     
-    @patch('src.core.market.get_share_price')
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.get_share_price')
+    @patch('src.core.accounts.write_account')
     def test_account_sell_shares_insufficient_holdings(self, mock_write, mock_price):
         """Testa venda com ações insuficientes."""
         mock_price.return_value = 150.0
@@ -313,8 +317,8 @@ class TestAccount:
         with pytest.raises(ValueError, match="Not enough shares held"):
             account.sell_shares("AAPL", 10, "Test")
     
-    @patch('src.core.market.get_share_price')
-    @patch('src.core.database.write_account')
+    @patch('src.core.accounts.get_share_price')
+    @patch('src.core.accounts.write_account')
     def test_account_sell_shares_remove_from_holdings(self, mock_write, mock_price):
         """Testa que ações são removidas de holdings quando quantidade chega a zero."""
         mock_price.return_value = 150.0
@@ -332,10 +336,13 @@ class TestAccount:
         
         assert "AAPL" not in account.holdings
     
-    @patch('src.core.market.get_share_price')
+    @patch('src.core.accounts.get_share_price')
     def test_account_calculate_portfolio_value(self, mock_price):
         """Testa cálculo do valor do portfólio."""
-        mock_price.return_value = 150.0
+        # Mock deve retornar o mesmo valor para cada símbolo
+        def price_side_effect(symbol):
+            return 150.0
+        mock_price.side_effect = price_side_effect
         
         account = Account(
             name="test",
@@ -372,9 +379,9 @@ class TestAccount:
         # Portfolio value seria 1000 (saldo) + (150 * 10) = 2500
         # Initial spend = 150 * 10 = 1500
         # P&L = 2500 - 1500 - 1000 = 0 (sem lucro/prejuízo)
-        with patch.object(account, 'calculate_portfolio_value', return_value=2500.0):
-            pnl = account.calculate_profit_loss(2500.0)
-            assert pnl == 0.0
+        portfolio_value = 2500.0
+        pnl = account.calculate_profit_loss(portfolio_value)
+        assert pnl == 0.0
     
     def test_account_get_holdings(self):
         """Testa obtenção de holdings."""
@@ -390,9 +397,9 @@ class TestAccount:
         holdings = account.get_holdings()
         assert holdings == {"AAPL": 10, "TSLA": 5}
     
-    @patch('src.core.market.get_share_price')
-    @patch('src.core.database.write_account')
-    @patch('src.core.database.write_log')
+    @patch('src.core.accounts.get_share_price')
+    @patch('src.core.accounts.write_account')
+    @patch('src.core.accounts.write_log')
     def test_account_report(self, mock_log, mock_write, mock_price):
         """Testa geração de relatório da conta."""
         mock_price.return_value = 150.0
@@ -416,8 +423,8 @@ class TestAccount:
         mock_write.assert_called()
         mock_log.assert_called()
     
-    @patch('src.core.database.write_account')
-    @patch('src.core.database.write_log')
+    @patch('src.core.accounts.write_account')
+    @patch('src.core.accounts.write_log')
     def test_account_get_strategy(self, mock_log, mock_write):
         """Testa obtenção de estratégia."""
         account = Account(
@@ -433,8 +440,8 @@ class TestAccount:
         assert strategy == "My strategy"
         mock_log.assert_called()
     
-    @patch('src.core.database.write_account')
-    @patch('src.core.database.write_log')
+    @patch('src.core.accounts.write_account')
+    @patch('src.core.accounts.write_log')
     def test_account_change_strategy(self, mock_log, mock_write):
         """Testa mudança de estratégia."""
         account = Account(

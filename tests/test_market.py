@@ -95,6 +95,9 @@ class TestSharePriceEOD:
     @patch('src.core.market.get_all_share_prices_polygon_eod')
     def test_get_market_for_prior_date_fetch(self, mock_get_all, mock_write, mock_read):
         """Testa que busca da API quando não há cache."""
+        # Limpa o cache LRU antes do teste
+        get_market_for_prior_date.cache_clear()
+        
         mock_read.return_value = None
         api_data = {"AAPL": 150.0, "TSLA": 200.0}
         mock_get_all.return_value = api_data
