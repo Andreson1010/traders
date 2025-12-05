@@ -187,13 +187,87 @@ def create_ui():
 
 if __name__ == "__main__":
     ui = create_ui()
-    # inbrowser=False para evitar erro "Operation not supported" no WSL
-    # O usuário pode abrir manualmente o navegador em http://127.0.0.1:7860
-    # Se quiser tentar abrir automaticamente, use inbrowser=True (pode falhar no WSL)
+    
+    # Configuração de acesso:
+    # - server_name="0.0.0.0": Permite acesso na rede local (além de localhost)
+    # - share=True: Cria link público temporário (acessível de qualquer lugar)
+    # - share=False: Apenas acesso local/rede local
+    #
+    # Para permitir acesso externo via link público:
+    # - share=True cria link como: https://xxxxx.gradio.live
+    # - Link expira quando você fecha o app
+    # - Qualquer pessoa com o link pode acessar
+    #
+    # Para apenas rede local (sem link público):
+    # - share=False e server_name="0.0.0.0"
+    # - Compartilhe seu IP local: http://SEU_IP:7860
+    #
+    # Para apenas acesso local (padrão):
+    # - share=False e server_name="127.0.0.1"
+    # - Apenas você pode acessar: http://127.0.0.1:7860
+    
+    # Configuração padrão: link público habilitado
+    # Mude share=False se não quiser link público
+    share_public_link = True  # True = link público, False = apenas rede local/localhost
+    
+    # Porta padrão do servidor
+    # Se a porta estiver ocupada, Gradio tentará automaticamente portas próximas
+    # Ou defina server_port=None para Gradio escolher automaticamente
+    default_port = 7860
+    
     try:
-        ui.launch(inbrowser=True, server_name="127.0.0.1", server_port=7860)
+        ui.launch(
+            inbrowser=True,  # Tenta abrir navegador automaticamente
+            server_name="0.0.0.0",  # Permite acesso na rede local
+            server_port=default_port,  # Porta padrão (Gradio tentará outras se ocupada)
+            share=share_public_link  # True = cria link público, False = apenas rede local
+        )
+    except OSError as e:
+        # Se a porta estiver ocupada, tenta sem especificar porta (Gradio escolhe automaticamente)
+        if "port" in str(e).lower() or "7860" in str(e):
+            print(f"Porta {default_port} está ocupada. Tentando porta automática...")
+            try:
+                ui.launch(
+                    inbrowser=True,
+                    server_name="0.0.0.0",
+                    server_port=None,  # Gradio escolhe porta livre automaticamente
+                    share=share_public_link
+                )
+            except Exception as e2:
+                print(f"Could not open browser automatically: {e2}")
+                if share_public_link:
+                    print("App iniciado com link público. O link será exibido acima.")
+                    print("Compartilhe o link para permitir acesso externo.")
+                ui.launch(
+                    inbrowser=False,
+                    server_name="0.0.0.0",
+                    server_port=None,  # Gradio escolhe porta livre automaticamente
+                    share=share_public_link
+                )
+        else:
+            raise
     except Exception as e:
         # Se falhar ao abrir navegador (comum no WSL), inicia sem abrir automaticamente
         print(f"Could not open browser automatically: {e}")
-        print("Please open http://127.0.0.1:7860 in your browser manually")
-        ui.launch(inbrowser=False, server_name="127.0.0.1", server_port=7860)
+        if share_public_link:
+            print("App iniciado com link público. O link será exibido acima.")
+            print("Compartilhe o link para permitir acesso externo.")
+        else:
+            print("Please open http://0.0.0.0:7860 in your browser manually")
+            print("Or use your local IP address if accessing from another device on the network")
+        try:
+            ui.launch(
+                inbrowser=False,  # Não tenta abrir navegador
+                server_name="0.0.0.0",  # Permite acesso na rede local
+                server_port=default_port,
+                share=share_public_link  # True = cria link público, False = apenas rede local
+            )
+        except OSError:
+            # Se porta ainda estiver ocupada, usa porta automática
+            print(f"Porta {default_port} ainda ocupada. Usando porta automática...")
+            ui.launch(
+                inbrowser=False,
+                server_name="0.0.0.0",
+                server_port=None,  # Gradio escolhe porta livre automaticamente
+                share=share_public_link
+            )

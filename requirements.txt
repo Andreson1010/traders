@@ -20,3 +20,8 @@ gradio>=4.0.0
 # Optional: For market data
 # polygon-api-client>=1.13.0  # If using Polygon API directly
 
+# Testing dependencies
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0  # For code coverage reports
+
